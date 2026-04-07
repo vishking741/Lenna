@@ -1,5 +1,4 @@
-# LENNA 
-# Real-Time FPGA Digital Image Processor (OV7670 to VGA) 
+# Lenna Real-Time FPGA Digital Image Processor 
 
 This repository contains the complete RTL design and IP configurations for a high-performance, real-time image processing pipeline. The system interfaces with an OV7670 CMOS camera, processes live video data through parallelized DSP hardware engines, and outputs the resulting frames to a VGA display at 640x480 resolution.
 
@@ -15,35 +14,55 @@ The design is architected as a high-throughput streaming pipeline, handling mult
 3.  **Buffering (BRAM):** Processed pixels are stored in a Dual-Port Block RAM. This serves as a Clock Domain Crossing (CDC) bridge between the Camera clock (24 MHz) and the VGA clock (25 MHz).
 4.  **Output (VGA):** The VGA controller reads from the BRAM and generates the required HSync and VSync timing signals for display.
 
-
-
 ---
 
 ## 2. Repository Structure and Hierarchy
 
 The following hierarchy represents the organization of the hardware modules within the Vivado project:
 
-* **top (top.v)** - The main system orchestrator.
-    * **clock_gen** (clk_wiz_1.xci) - Generates 25 MHz (VGA) and 24 MHz (Camera XCLK).
-    * **top_btn_db** (debounce.v) - Master reset debouncer.
-    * **OV7670_cam** (cam_top.v) - The Camera Subsystem.
-        * **cam_btn_start_db** - Trigger for camera initialization.
-        * **configure_cam** (cam_init.v) - SCCB/I2C Controller.
-            * **OV7670_Registers** (cam_rom.v) - Configuration register set.
-            * **OV7670_config** (cam_config.v) - SCCB state machine.
-            * **SCCB_HERE** (sccb_master.v) - I2C physical layer.
-        * **cam_pixels** (cam_capture.v) - Byte-to-pixel reconstruction.
-    * **process** (image_processing_wrapper.v) - **The Processing Core.**
-        * **process_red/green/blue** (imageprocesstop.v) - Three parallel DSP slices.
-            * **IC** (imagecontroller.v) - Line buffering for spatial convolution.
-                * **lb0 - lb3** (linebuffer.v) - Synchronous shift registers for row storage.
-            * **conv** (conv_top.v) - Mathematical kernel selector.
-                * **sobel** (conv_sobel.v) - Edge detection logic.
-                * **generic** (conv_generic.v) - Blur/Sharpen/Emboss logic.
-            * **OB** (outputbuffer.xci) - AXI-Stream FIFO for flow control.
-    * **pixel_memory** (mem_bram.v) - Dual-port 12-bit Frame Buffer.
-    * **display_interface** (vga_top.v) - VGA output controller.
-        * **vga_timing_signals** (vga_driver.v) - Standard 640x480 @ 60Hz timing.
+# Real-Time FPGA Digital Image Processing Pipeline
+
+This repository contains the RTL design and Vivado project files for a high-performance video processing system. The system captures live video from an OV7670 CMOS sensor, processes the stream through parallelized hardware DSP engines, and outputs the result to a VGA display at 640x480 resolution.
+
+---
+
+## 1. System Clock Domains
+
+The design operates across three primary clock domains managed by the `clock_gen` IP core:
+
+* **System Clock (100 MHz):** Used for master control logic and SCCB initialization.
+* **VGA Clock (25 MHz):** Drives the VGA timing signals (HSync/VSync) for 640x480 @ 60Hz.
+* **Camera XCLK (24 MHz):** Provided to the OV7670 sensor as the master external clock for pixel generation.
+
+---
+
+## 2. Repository Hierarchy
+
+The following structure represents the actual module organization in the Vivado project:
+
+```text
+top (top.v)
+├── clock_gen : clk_wiz_1 (Generates 25MHz and 24MHz)
+├── top_btn_db : debouncer (Master Reset)
+├── OV7670_cam : cam_top (cam_top.v)
+│   ├── cam_btn_start_db : debouncer (Trigger Init)
+│   ├── configure_cam : cam_init (SCCB Controller)
+│   │   ├── OV7670_Registers : cam_rom
+│   │   ├── OV7670_config : cam_config
+│   │   └── SCCB_HERE : sccb_master
+│   └── cam_pixels : cam_capture (Byte-to-Pixel reconstruction)
+├── process : image_processing_wrapper (image_processing_wrapper.v)
+│   ├── process_red / green / blue : imageprocesstop.v (Parallel DSP Slices)
+│   │   ├── IC : imagecontroller (Sliding Window Controller)
+│   │   │   └── lb0 - lb3 : linebuffer (Synchronous Row Storage)
+│   │   ├── conv : conv_top (Kernel Selector)
+│   │   │   ├── sobel : conv_sobel (Edge Detection)
+│   │   │   └── generic : conv_generic (Multi-mode Filter)
+│   │   └── OB : outputbuffer (AXI-Stream FIFO)
+├── pixel_memory : mem_bram (mem_bram.v - Dual-Port Frame Buffer)
+└── display_interface : vga_top (vga_top.v)
+    └── vga_timing_signals : vga_driver (VGA timing generation)
+```
 
 ---
 
@@ -59,8 +78,6 @@ This module is the "Brain" of the visual effects. To maintain a real-time 60 FPS
 * **Parallelism:** It splits the RGB pixel into three separate streams. This allows the FPGA to process the Red, Green, and Blue components in parallel using dedicated hardware logic.
 * **Line Buffering:** To perform a convolution (like Sobel), the hardware needs to look at a 3x3 grid of pixels. The `imagecontroller` uses `linebuffers` to store previous lines of video, effectively creating a sliding window that moves across the image as it streams from the camera.
 * **Recombination:** After the DSP slices finish their calculations, the wrapper recombines the results and applies a Master Mask (switches 14:12) before sending the data to the BRAM.
-
-
 
 ---
 
@@ -85,10 +102,13 @@ Each 4-bit block controls the mathematical operation for that specific color cha
 
 **Generic Filter Mappings (When Mode Select = 0):**
 * `000`: Identity (Raw Camera Data)
-* `001`: Gaussian Blur
-* `010`: Sharpen
-* `011`: Mean Blur
-* `100`: Emboss
+* `001`: Box Blur
+* `010`: -ve Identity
+* `011`: Sharpen
+* `100`: Edge detection
+* `101`: Prewitt
+* `110`: Motion Blur
+* `111`: Emboss
 
 ---
 
@@ -110,7 +130,7 @@ Each 4-bit block controls the mathematical operation for that specific color cha
 ---
 
 ## 6. Build and Constraints
-* **Target Clock:** 100 MHz (System), 25.175 MHz (VGA), 24 MHz (Camera XCLK).
+* **Target Clock:** 100 MHz (System), 25 MHz (VGA), 24 MHz (Camera XCLK).
 * **Resolution:** 640x480 @ 60Hz.
 * **IP Dependencies:** Clock Wizard (`clk_wiz_1`), FIFO Generator (`outputbuffer`), and Dual-Port BRAM.
 * **Constraints:** Ensure the `.xdc` file correctly maps the `SIOC`, `SIOD`, `PCLK`, and VGA pins to your specific FPGA development board.
