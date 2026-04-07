@@ -51,7 +51,7 @@ module conv_top(
         .o_convolved_data      (generic_data),
         .o_convolved_data_valid(generic_valid)
     );
-//check 
+
     always @(posedge i_clk) begin
         if (SW[3]) begin
             o_convolved_data       <= sobel_data;
