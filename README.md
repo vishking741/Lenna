@@ -70,16 +70,37 @@ top (top.v)
 
 ![Full Processing Architecture](https://github.com/vishking741/Lenna/blob/main/lenna_blk_diag.png)
 
-### Camera Module (cam_top)
-The camera module is responsible for bringing the OV7670 hardware into a functional state. 
-* **Initialization:** Upon a 'Start' signal, the `cam_init` block uses the SCCB protocol (I2C) to write specific register values to the camera. This configures the sensor for RGB444 output, sets the gain, and optimizes exposure.
-* **Capture:** The `cam_capture` module watches the `PCLK`, `HREF`, and `VSYNC` signals. Because the camera sends 12-bit pixels as two 8-bit bytes, this module performs the concatenation and generates a `write_enable` signal only when a full pixel is ready.
+## 3. Detailed Module Explanation
 
-### Image Processing Wrapper (image_processing_wrapper)
-This module is the "Brain" of the visual effects. To maintain a real-time 60 FPS stream, it uses a MIMD (Multiple Instruction, Multiple Data) approach:
-* **Parallelism:** It splits the RGB pixel into three separate streams. This allows the FPGA to process the Red, Green, and Blue components in parallel using dedicated hardware logic.
-* **Line Buffering:** To perform a convolution (like Sobel), the hardware needs to look at a 3x3 grid of pixels. The `imagecontroller` uses `linebuffers` to store previous lines of video, effectively creating a sliding window that moves across the image as it streams from the camera.
-* **Recombination:** After the DSP slices finish their calculations, the wrapper recombines the results and applies a Master Mask (switches 14:12) before sending the data to the BRAM.
+### Camera Sensor (OV7670)
+The physical image sensor that captures raw visual data.
+* **Interface:** It receives the master clock (`xclk`) and outputs a pixel clock (`pclk`), horizontal reference (`href`), and vertical sync (`vsync`).
+* **Data Flow:** It outputs 12-bit pixel data in RGB444 format, sent as two consecutive 8-bit bytes via the `pix_byte` bus.
+
+### Camera Top (cam_top)
+The management layer for the camera hardware, containing two sub-modules:
+* **cam_interface:** Operates at **100 MHz** to handle the SCCB (I2C) initialization. It writes register settings to the sensor to configure resolution and color format.
+* **cam_capture:** Synchronizes with the **24 MHz** `pclk`. It samples the byte stream, reconstructs the 12-bit pixels, and generates the write addresses (`o_pix_addr`) for the system.
+
+### Image Processing (image_processing)
+The "Brain" of the architecture where real-time filtering occurs.
+* **Parallel Architecture:** Uses a MIMD (Multiple Instruction, Multiple Data) approach by splitting the RGB stream into three parallel processors (Red, Green, and Blue).
+* **Pipeline:** Takes raw data from `cam_capture` and applies hardware-level effects (like Sobel filters or Sharpening) before passing the modified pixels and addresses to memory.
+
+### Dual-Port Memory (mem_bram)
+A high-speed Block RAM that acts as a **Clock Domain Crossing (CDC)** buffer.
+* **Synchronization:** Decouples the camera's input timing (**24 MHz**) from the VGA's output timing (**25 MHz**).
+* **Simultaneous Access:** Port A handles incoming processed data while Port B simultaneously provides data to the display, preventing screen tearing.
+
+### VGA Controller (vga_top)
+The display driver that converts memory data into a standard VGA signal.
+* **Timing:** Generates `o_VGA_Hsync` and `o_VGA_Vsync` for 640x480 @ 60Hz.
+* **Retrieval:** Constantly requests the next pixel address (`o_VGA_pix_addr`) from BRAM and outputs the 4-bit R, G, and B signals to the hardware DAC.
+
+### Clock Generator (Clock Gen)
+The system's timing backbone using an FPGA PLL.
+* **xclk:** 24 MHz clock provided to the sensor.
+* **clk25m:** 25 MHz standard VGA clock for display logic and memory reading.
 
 ---
 
