@@ -1,6 +1,6 @@
-# Lenna Real-Time FPGA Digital Image Processing Pipeline
+# Lenna Real-Time FPGA Digital Image Processor
 
-This repository contains the RTL design and Vivado project files for a high-performance video processing system. The system captures live video from an OV7670 CMOS sensor, processes the stream through parallelized hardware DSP engines, and outputs the result to a VGA display at 640x480 resolution.
+This repository contains the RTL design and Vivado project files for a performing video processing system. The system captures live video from an OV7670 CMOS sensor, processes the stream through parallelized hardware DSP engines, and outputs the result to a VGA display at 640x480 resolution.
 
 ---
 
@@ -62,6 +62,7 @@ The management layer for the camera hardware, containing two sub-modules:
 The "Brain" of the architecture where real-time filtering occurs.
 * **Parallel Architecture:** Uses a MIMD (Multiple Instruction, Multiple Data) approach by splitting the RGB stream into three parallel processors (Red, Green, and Blue).
 * **Pipeline:** Takes raw data from `cam_capture` and applies hardware-level effects (like Sobel filters or Sharpening) before passing the modified pixels and addresses to memory.
+* **Filters:** We can change the filters as our wish in `conv_generic` some of filters are implemented here and also in `conv_sobel` sobel filter is being performed
 
 ### Dual-Port Memory (mem_bram)
 A high-speed Block RAM that acts as a **Clock Domain Crossing (CDC)** buffer.
@@ -72,11 +73,6 @@ A high-speed Block RAM that acts as a **Clock Domain Crossing (CDC)** buffer.
 The display driver that converts memory data into a standard VGA signal.
 * **Timing:** Generates `o_VGA_Hsync` and `o_VGA_Vsync` for 640x480 @ 60Hz.
 * **Retrieval:** Constantly requests the next pixel address (`o_VGA_pix_addr`) from BRAM and outputs the 4-bit R, G, and B signals to the hardware DAC.
-
-### Clock Generator (Clock Gen)
-The system's timing backbone using an FPGA PLL.
-* **xclk:** 24 MHz clock provided to the sensor.
-* **clk25m:** 25 MHz standard VGA clock for display logic and memory reading.
 
 ---
 
