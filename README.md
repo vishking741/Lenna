@@ -70,8 +70,6 @@ top (top.v)
 
 ![Full Processing Architecture](https://github.com/vishking741/Lenna/blob/main/lenna_blk_diag.png)
 
-## 3. Detailed Module Explanation
-
 ### Camera Sensor (OV7670)
 The physical image sensor that captures raw visual data.
 * **Interface:** It receives the master clock (`xclk`) and outputs a pixel clock (`pclk`), horizontal reference (`href`), and vertical sync (`vsync`).
