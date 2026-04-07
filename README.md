@@ -68,6 +68,8 @@ top (top.v)
 
 ## 3. Detailed Module Explanation
 
+![Full Processing Architecture](https://github.com/vishking741/Lenna/blob/main/lenna_blk_diag.png)
+
 ### Camera Module (cam_top)
 The camera module is responsible for bringing the OV7670 hardware into a functional state. 
 * **Initialization:** Upon a 'Start' signal, the `cam_init` block uses the SCCB protocol (I2C) to write specific register values to the camera. This configures the sensor for RGB444 output, sets the gain, and optimizes exposure.
