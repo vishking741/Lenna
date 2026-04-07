@@ -1,26 +1,4 @@
-# Lenna Real-Time FPGA Digital Image Processor 
-
-This repository contains the complete RTL design and IP configurations for a high-performance, real-time image processing pipeline. The system interfaces with an OV7670 CMOS camera, processes live video data through parallelized DSP hardware engines, and outputs the resulting frames to a VGA display at 640x480 resolution.
-
----
-
-## 1. System Architecture and Data Flow
-
-The design is architected as a high-throughput streaming pipeline, handling multiple clock domains to ensure stability and real-time performance.
-
-### Data Path Overview
-1.  **Input (Camera):** Raw byte streams are captured from the OV7670 sensor at a 24 MHz Pixel Clock (PCLK).
-2.  **Processing (The Wrapper):** Data is intercepted by the `image_processing_wrapper` before reaching memory. This allows for "zero-latency" visual effects.
-3.  **Buffering (BRAM):** Processed pixels are stored in a Dual-Port Block RAM. This serves as a Clock Domain Crossing (CDC) bridge between the Camera clock (24 MHz) and the VGA clock (25 MHz).
-4.  **Output (VGA):** The VGA controller reads from the BRAM and generates the required HSync and VSync timing signals for display.
-
----
-
-## 2. Repository Structure and Hierarchy
-
-The following hierarchy represents the organization of the hardware modules within the Vivado project:
-
-# Real-Time FPGA Digital Image Processing Pipeline
+# Lenna Real-Time FPGA Digital Image Processing Pipeline
 
 This repository contains the RTL design and Vivado project files for a high-performance video processing system. The system captures live video from an OV7670 CMOS sensor, processes the stream through parallelized hardware DSP engines, and outputs the result to a VGA display at 640x480 resolution.
 
